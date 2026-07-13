@@ -1,4 +1,4 @@
-// version 1
+// version 2 - using maps
 package main
 
 import (
@@ -9,17 +9,16 @@ import (
 )
 
 type contact struct {
-	name        string
 	prefix      string
 	phoneNumber string
 }
 
-func newContact(name string, prefix string, phoneNumber string) *contact {
-	c := contact{name: name, prefix: prefix, phoneNumber: phoneNumber}
+func newContact(prefix string, phoneNumber string) *contact {
+	c := contact{prefix: prefix, phoneNumber: phoneNumber}
 	return &c
 }
 
-func addContact(contactBook []*contact, input *bufio.Reader) []*contact {
+func addContact(contactBook map[string]*contact, input *bufio.Reader) {
 	fmt.Print("Add contact:\nName: ")
 	name, _ := input.ReadString('\n')
 	name = strings.TrimSpace(name)
@@ -32,45 +31,48 @@ func addContact(contactBook []*contact, input *bufio.Reader) []*contact {
 	phoneNumber, _ := input.ReadString('\n')
 	phoneNumber = strings.TrimSpace(phoneNumber)
 
-	fmt.Print("\n")
-	contactBook = append(contactBook, newContact(name, prefix, phoneNumber))
+	_, exist := contactBook[name]
+	if exist {
+		fmt.Printf("Contact %s already exists\n\n", name)
+		return
+	}
 
-	return contactBook
+	for _, info := range contactBook {
+		if info.phoneNumber == phoneNumber {
+			fmt.Printf("Contact with phone number %s already exists\n\n", phoneNumber)
+			return
+		}
+	}
+
+	contactBook[name] = newContact(prefix, phoneNumber)
+	fmt.Print("\n")
 }
 
-func removeContact(contactBook []*contact, input *bufio.Reader) []*contact {
+func removeContact(contactBook map[string]*contact, input *bufio.Reader) {
 	fmt.Print("Remove contact:\nName: ")
 	name, _ := input.ReadString('\n')
 	name = strings.TrimSpace(name)
 	fmt.Print("\n")
 
-	indexToDelete := -1
-
-	for i, contact := range contactBook {
-		if contact.name == name {
-			indexToDelete = i
-		}
+	_, exists := contactBook[name]
+	if !exists {
+		fmt.Println("No contact found")
+		return
 	}
 
-	if indexToDelete == -1 {
-		fmt.Println("No contact found\n")
-		return contactBook
-	} else {
-		contactBook = append(contactBook[:indexToDelete], contactBook[indexToDelete+1:]...)
-		fmt.Printf("Contact %s removed\n\n", name)
-		return contactBook
-	}
+	delete(contactBook, name)
+	fmt.Printf("Contact %s removed\n\n", name)
 }
 
-func showContact(contactBook []*contact) {
+func showContact(contactBook map[string]*contact) {
 	fmt.Println("Contact Book:")
-	for i, contact := range contactBook {
-		fmt.Printf("%d. %s -> %s%s\n", i+1, contact.name, contact.prefix, contact.phoneNumber)
+	for name, info := range contactBook {
+		fmt.Printf(name + " -> " + info.prefix + info.phoneNumber)
 	}
-	fmt.Print("\n")
+	fmt.Print("\n\n")
 }
 
-func showMenu(contactBook []*contact, input *bufio.Reader) {
+func showMenu(contactBook map[string]*contact, input *bufio.Reader) {
 	for {
 		fmt.Println("Menu")
 		fmt.Println("1. Add contact")
@@ -84,20 +86,22 @@ func showMenu(contactBook []*contact, input *bufio.Reader) {
 
 		switch command {
 		case "1":
-			contactBook = addContact(contactBook, input)
+			addContact(contactBook, input)
 		case "2":
-			contactBook = removeContact(contactBook, input)
+			removeContact(contactBook, input)
 		case "3":
 			showContact(contactBook)
-		default:
+		case "no":
 			return
+		default:
+			fmt.Println("Invalid command\n")
 		}
 	}
 }
 
 func main() {
 	input := bufio.NewReader(os.Stdin)
-	contactBook := []*contact{}
+	contactBook := make(map[string]*contact)
 
 	showMenu(contactBook, input)
 }
