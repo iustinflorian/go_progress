@@ -38,6 +38,30 @@ func addContact(contactBook []*contact, input *bufio.Reader) []*contact {
 	return contactBook
 }
 
+func removeContact(contactBook []*contact, input *bufio.Reader) []*contact {
+	fmt.Print("Remove contact:\nName: ")
+	name, _ := input.ReadString('\n')
+	name = strings.TrimSpace(name)
+	fmt.Print("\n")
+
+	indexToDelete := -1
+
+	for i, contact := range contactBook {
+		if contact.name == name {
+			indexToDelete = i
+		}
+	}
+
+	if indexToDelete == -1 {
+		fmt.Println("No contact found\n")
+		return contactBook
+	} else {
+		contactBook = append(contactBook[:indexToDelete], contactBook[indexToDelete+1:]...)
+		fmt.Printf("Contact %s removed\n\n", name)
+		return contactBook
+	}
+}
+
 func showContact(contactBook []*contact) {
 	fmt.Println("Contact Book:")
 	for i, contact := range contactBook {
@@ -48,24 +72,26 @@ func showContact(contactBook []*contact) {
 
 func showMenu(contactBook []*contact, input *bufio.Reader) {
 	for {
-		fmt.Println("Menu:")
-		fmt.Println("1. Add contact:")
-		fmt.Println("2. View contacts:")
+		fmt.Println("Menu")
+		fmt.Println("1. Add contact")
+		fmt.Println("2. Remove contact")
+		fmt.Println("3. View contacts")
 		fmt.Print("Enter command (type 'no' to cancel): ")
 
 		command, _ := input.ReadString('\n')
 		command = strings.TrimSpace(command)
+		fmt.Print("\n")
 
 		switch command {
 		case "1":
 			contactBook = addContact(contactBook, input)
 		case "2":
+			contactBook = removeContact(contactBook, input)
+		case "3":
 			showContact(contactBook)
 		default:
 			return
 		}
-
-		fmt.Print("\n")
 	}
 }
 
