@@ -19,40 +19,59 @@ func newContact(name string, prefix string, phoneNumber string) *contact {
 	return &c
 }
 
-func main() {
-	input := bufio.NewReader(os.Stdin)
-	fmt.Println("Local contact book:")
+func addContact(contactBook []*contact, input *bufio.Reader) []*contact {
+	fmt.Print("Add contact:\nName: ")
+	name, _ := input.ReadString('\n')
+	name = strings.TrimSpace(name)
 
-	contactBook := []*contact{}
+	fmt.Print("Prefix: ")
+	prefix, _ := input.ReadString('\n')
+	prefix = strings.TrimSpace(prefix)
 
+	fmt.Print("Phone number: ")
+	phoneNumber, _ := input.ReadString('\n')
+	phoneNumber = strings.TrimSpace(phoneNumber)
+
+	fmt.Print("\n")
+	contactBook = append(contactBook, newContact(name, prefix, phoneNumber))
+
+	return contactBook
+}
+
+func showContact(contactBook []*contact) {
+	fmt.Println("Contact Book:")
+	for i, contact := range contactBook {
+		fmt.Printf("%d. %s -> %s%s\n", i+1, contact.name, contact.prefix, contact.phoneNumber)
+	}
+	fmt.Print("\n")
+}
+
+func showMenu(contactBook []*contact, input *bufio.Reader) {
 	for {
-		fmt.Print("Add a new contact (type 'no' to cancel):\nName: ")
-		name, _ := input.ReadString('\n')
-		name = strings.TrimSpace(name)
+		fmt.Println("Menu:")
+		fmt.Println("1. Add contact:")
+		fmt.Println("2. View contacts:")
+		fmt.Print("Enter command (type 'no' to cancel): ")
 
-		if name == "no" {
-			break
+		command, _ := input.ReadString('\n')
+		command = strings.TrimSpace(command)
+
+		switch command {
+		case "1":
+			contactBook = addContact(contactBook, input)
+		case "2":
+			showContact(contactBook)
+		default:
+			return
 		}
 
-		fmt.Print("Prefix: ")
-		prefix, _ := input.ReadString('\n')
-		prefix = strings.TrimSpace(prefix)
-
-		fmt.Print("Phone number: ")
-		phoneNumber, _ := input.ReadString('\n')
-		phoneNumber = strings.TrimSpace(phoneNumber)
-
-		contactBook = append(contactBook, newContact(name, prefix, phoneNumber))
+		fmt.Print("\n")
 	}
+}
 
-	for _, contact := range contactBook {
-		fmt.Println(*contact)
-	}
+func main() {
+	input := bufio.NewReader(os.Stdin)
+	contactBook := []*contact{}
 
-	//contactBook = append(contactBook, newContact("Florian", "+40", "0723234234"))
-	// fmt.Println(*contactBook[0])
-
-	// c1 := contact{"Iustin", "+40", "0712123123"}
-	// c2 := newContact("Florian", "+40", "0723234234")
-	// fmt.Printf("%s -> %s%s\n", c1.name, c1.prefix, c1.phoneNumber)
+	showMenu(contactBook, input)
 }
