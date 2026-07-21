@@ -5,8 +5,9 @@ import (
 	"strings"
 )
 
-// encryption func: e = (a * i + b) % m
+// encryption func: e = (a * chIndex + b) % m
 // a, m coprime (or, relatively prime)
+// decryption func: d = (modInverse(a, m) * ((chIndex - b) % m + m)) % m
 
 type ErrInvalidNum int
 type ErrNotCoprime int
@@ -27,14 +28,24 @@ func checkCoprime(a, m int) bool {
 	return true
 }
 
-func Encrypt(text string, a, b, m int) ([]rune, error) {
+func modInverse(a, m int) int {
+	a = a % m
+	for x := 1; x < m; x++ {
+		if (a*x)%m == 1 {
+			return x
+		}
+	}
+	return 1
+}
+
+func Encrypt(text string, a, b, m int) (string, error) {
 	var result []rune
 
 	if a < 1 {
-		return nil, ErrInvalidNum(a)
+		return "", ErrInvalidNum(a)
 	}
 	if !checkCoprime(a, m) {
-		return nil, ErrNotCoprime(a)
+		return "", ErrNotCoprime(a)
 	}
 
 	text = strings.ToLower(text)
@@ -49,16 +60,46 @@ func Encrypt(text string, a, b, m int) ([]rune, error) {
 		}
 	}
 
-	return result, nil
+	return string(result), nil
+}
+
+func Decrypt(encryptedText string, a, b, m int) (string, error) {
+	var result []rune
+	encryptedText = strings.ToLower(encryptedText)
+
+	if a < 1 {
+		return "", ErrInvalidNum(a)
+	}
+	if !checkCoprime(a, m) {
+		return "", ErrNotCoprime(a)
+	}
+
+	for _, ch := range encryptedText {
+		if ch >= 'a' && ch <= 'z' {
+			chIndex := int(ch - 'a')
+			deIndex := (modInverse(a, m) * ((chIndex-b)%m + m)) % m
+			deChar := rune('a' + deIndex)
+
+			result = append(result, deChar)
+		}
+	}
+
+	return string(result), nil
 }
 
 func main() {
 	a, b, m := 5, 8, 26
-	text := "hello"
+	text := "hello there"
 
 	encrypted, err := Encrypt(text, a, b, m)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(string(encrypted))
+	fmt.Println(encrypted)
+
+	decrypted, err := Decrypt(encrypted, a, b, m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(decrypted)
 }
