@@ -5,29 +5,40 @@ import (
 	"strings"
 )
 
-// todo: functions that show info to use ID instead of passing the struct
-
 type Student struct {
 	name   string
 	group  string
 	grades []float64
 }
 
-func showStudentInfo(student Student) {
-	sum := 0.0
+type ErrStudentNotFound string
+type ErrGroupNotFound string
 
+func (e ErrStudentNotFound) Error() string {
+	return fmt.Sprintf("student with ID %s not found", string(e))
+}
+func (e ErrGroupNotFound) Error() string {
+	return fmt.Sprintf("group %s not found", string(e))
+}
+
+func showStudentInfo(id string, school map[string]Student) (float64, error) {
+	student, ok := school[id]
+	if !ok {
+		return 0, ErrStudentNotFound(id)
+	}
+
+	sum := 0.0
 	for _, grade := range student.grades {
 		sum += grade
 	}
 
 	sum /= float64(len(student.grades))
-	fmt.Printf("Student %s from group %s has an average grade of %f.\n", student.name, student.group, sum)
+	return sum, nil
 }
 
-func generateAvgPerGroup(group string, school map[string]Student) float64 {
+func generateAvgPerGroup(group string, school map[string]Student) (float64, error) {
 	avg := 0.0
-	count := 0.0
-
+	count := 0
 	for _, student := range school {
 		if student.group == group {
 			count++
@@ -39,8 +50,12 @@ func generateAvgPerGroup(group string, school map[string]Student) float64 {
 		}
 	}
 
-	avg /= count
-	return avg
+	if count == 0 {
+		return 0, ErrGroupNotFound(group)
+	}
+
+	avg /= float64(count)
+	return avg, nil
 }
 
 func main() {
@@ -62,9 +77,21 @@ func main() {
 		},
 	}
 
-	showStudentInfo(school["01"])
+	studentId := "03"
+	studentAvg, err := showStudentInfo(studentId, school)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Printf("Student %s from group %s has an average grade of %f.\n", school[studentId].name, school[studentId].group, studentAvg)
+	}
 
 	group := "4B"
 	group = strings.ToLower(group)
-	fmt.Printf("For group %s, average of grades is: %f\n", group, generateAvgPerGroup("4b", school))
+	avg, err := generateAvgPerGroup(group, school)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Printf("For group %s, average of grades is: %f\n", group, avg)
+	}
+
 }
