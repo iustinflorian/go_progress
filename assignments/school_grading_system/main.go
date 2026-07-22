@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -21,10 +23,14 @@ func (e ErrGroupNotFound) Error() string {
 	return fmt.Sprintf("group %s not found", string(e))
 }
 
-func showStudentInfo(id string, school map[string]Student) (float64, error) {
-	student, ok := school[id]
+func showStudentInfo(school map[string]*Student, input *bufio.Reader) {
+	fmt.Printf("Student ID to search: ")
+	ids, _ := input.ReadString('\n')
+	ids = strings.TrimSpace(ids)
+
+	student, ok := school[ids]
 	if !ok {
-		return 0, ErrStudentNotFound(id)
+		fmt.Println(ErrStudentNotFound(ids))
 	}
 
 	sum := 0.0
@@ -33,10 +39,11 @@ func showStudentInfo(id string, school map[string]Student) (float64, error) {
 	}
 
 	sum /= float64(len(student.grades))
-	return sum, nil
+	fmt.Printf("Student %s from group %s has an average grade of %f.\n",
+		student.name, student.group, sum)
 }
 
-func generateAvgPerGroup(group string, school map[string]Student) (float64, error) {
+/*func genAvgPerGroup(group string, school map[string]*Student) (float64, error) {
 	avg := 0.0
 	count := 0
 	for _, student := range school {
@@ -56,42 +63,43 @@ func generateAvgPerGroup(group string, school map[string]Student) (float64, erro
 
 	avg /= float64(count)
 	return avg, nil
+}*/
+
+func showMenu(school map[string]*Student, input *bufio.Reader) {
+	for {
+		fmt.Println("Menu")
+		fmt.Println("1. Add student")
+		fmt.Println("2. Update student")
+		fmt.Println("3. View student info")
+		fmt.Println("4. Generate reports")
+
+		fmt.Print("Enter command (type 'no' to cancel): ")
+
+		command, _ := input.ReadString('\n')
+		command = strings.TrimSpace(command)
+		fmt.Print("\n")
+
+		switch command {
+		case "1":
+		case "2":
+		case "3":
+			showStudentInfo(school, input)
+		case "4":
+		case "no":
+			return
+		default:
+			fmt.Println("Invalid command.")
+		}
+	}
 }
 
 func main() {
-	school := map[string]Student{
-		"01": Student{
-			"Andrei",
-			"4b",
-			[]float64{9.3, 9.5, 8.4},
-		},
-		"02": Student{
-			"Matei",
-			"4b",
-			[]float64{7.7, 6.3, 7.4},
-		},
-		"03": Student{
-			"Toni",
-			"4c",
-			[]float64{7.4, 9.1, 6.0},
-		},
+	input := bufio.NewReader(os.Stdin)
+	school := map[string]*Student{
+		"01": &Student{"Andrei", "4b", []float64{9.3, 9.5, 8.4}},
+		"02": &Student{"Matei", "4b", []float64{7.7, 6.3, 7.4}},
+		"03": &Student{"Toni", "4c", []float64{7.4, 9.1, 6.0}},
 	}
 
-	studentId := "03"
-	studentAvg, err := showStudentInfo(studentId, school)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Printf("Student %s from group %s has an average grade of %f.\n", school[studentId].name, school[studentId].group, studentAvg)
-	}
-
-	group := "4B"
-	group = strings.ToLower(group)
-	avg, err := generateAvgPerGroup(group, school)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Printf("For group %s, average of grades is: %f\n", group, avg)
-	}
-
+	showMenu(school, input)
 }
