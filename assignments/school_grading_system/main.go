@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -23,6 +24,14 @@ func (e ErrGroupNotFound) Error() string {
 	return fmt.Sprintf("group %s not found", string(e))
 }
 
+func avgGrade(grades []float64) float64 {
+	sum := 0.0
+	for _, grade := range grades {
+		sum += grade
+	}
+	return sum / float64(len(grades))
+}
+
 func showStudentInfo(school map[string]*Student, input *bufio.Reader) {
 	fmt.Printf("Student ID to search: ")
 	ids, _ := input.ReadString('\n')
@@ -30,66 +39,100 @@ func showStudentInfo(school map[string]*Student, input *bufio.Reader) {
 
 	student, ok := school[ids]
 	if !ok {
-		fmt.Println(ErrStudentNotFound(ids))
+		fmt.Printf("Error %s\n", ErrStudentNotFound(ids))
+		return
 	}
 
-	sum := 0.0
-	for _, grade := range student.grades {
-		sum += grade
-	}
-
-	sum /= float64(len(student.grades))
-	fmt.Printf("Student %s from group %s has an average grade of %f.\n",
-		student.name, student.group, sum)
+	fmt.Printf("Student %s from group %s has an average grade of %.2f.\n",
+		student.name, student.group, avgGrade(student.grades))
 }
 
-/*func genAvgPerGroup(group string, school map[string]*Student) (float64, error) {
+func genAvgPerGroup(school map[string]*Student, input *bufio.Reader) {
+	fmt.Printf("Group ID: ")
+	idg, _ := input.ReadString('\n')
+	idg = strings.TrimSpace(idg)
+
 	avg := 0.0
 	count := 0
 	for _, student := range school {
-		if student.group == group {
+		if student.group == idg {
 			count++
-			sum := 0.0
-			for _, grade := range student.grades {
-				sum += grade
-			}
-			avg += sum / float64(len(student.grades))
+			avg += avgGrade(student.grades)
 		}
 	}
-
 	if count == 0 {
-		return 0, ErrGroupNotFound(group)
+		fmt.Printf("Error %s\n", ErrGroupNotFound(idg))
+		return
+	}
+	avg /= float64(count)
+
+	fmt.Printf("The average grade for group %s is %.2f\n", idg, avg)
+}
+
+func genStudentOrderByAvg(school map[string]*Student) {
+	// todo: check if school is empty
+
+	var ids []string
+	for id := range school {
+		ids = append(ids, id)
 	}
 
-	avg /= float64(count)
-	return avg, nil
-}*/
+	sort.Slice(ids, func(i, j int) bool {
+		return avgGrade(school[ids[i]].grades) > avgGrade(school[ids[j]].grades)
+	})
+
+	fmt.Printf(" Nr.| Grade | Name\n--------------------\n")
+	for i, id := range ids {
+		student := school[id]
+		fmt.Printf("%3d | %5.2f | %s\n", i+1, avgGrade(student.grades), student.name)
+	}
+}
 
 func showMenu(school map[string]*Student, input *bufio.Reader) {
 	for {
-		fmt.Println("Menu")
-		fmt.Println("1. Add student")
-		fmt.Println("2. Update student")
-		fmt.Println("3. View student info")
-		fmt.Println("4. Generate reports")
-
+		fmt.Println("\n----[ Main menu ]----")
+		fmt.Println("1. View student info")
+		fmt.Println("2. Generate reports")
+		// fmt.Println("3. Add student")
+		// fmt.Println("4. Update student")
 		fmt.Print("Enter command (type 'no' to cancel): ")
 
 		command, _ := input.ReadString('\n')
 		command = strings.TrimSpace(command)
-		fmt.Print("\n")
 
 		switch command {
 		case "1":
-		case "2":
-		case "3":
 			showStudentInfo(school, input)
-		case "4":
+		case "2":
+			reportsMenu(school, input)
+		// case "3":
+		// case "4":
 		case "no":
 			return
 		default:
 			fmt.Println("Invalid command.")
 		}
+	}
+}
+
+func reportsMenu(school map[string]*Student, input *bufio.Reader) {
+	fmt.Println("\n---------[ Generate a report ]--------")
+	fmt.Println("1. Average grade for a particular group")
+	fmt.Println("2. Students list ordered by average grade")
+	fmt.Print("Enter command (type 'no' for main menu): ")
+
+	command, _ := input.ReadString('\n')
+	command = strings.TrimSpace(command)
+
+	switch command {
+	case "1":
+		genAvgPerGroup(school, input)
+	case "2":
+		genStudentOrderByAvg(school)
+	case "no":
+		showMenu(school, input)
+	default:
+		fmt.Println("Invalid command.")
 	}
 }
 
