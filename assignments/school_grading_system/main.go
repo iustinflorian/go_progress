@@ -26,13 +26,29 @@ func (e ErrGroupNotFound) Error() string {
 	return fmt.Sprintf("group %s not found", string(e))
 }
 
-func avgGrade(grades []float64) float64 {
+func (s Student) avgGrade() float64 {
 	sum := 0.0
-	for _, grade := range grades {
+	for _, grade := range s.grades {
 		sum += grade
 	}
-	return sum / float64(len(grades))
+	return sum / float64(len(s.grades))
 }
+
+/*func (school School) generateID() string {
+	var newID, lastID int
+	lastID = 0
+
+	for ids := range school {
+		var idsNum int
+		fmt.Sscanf(ids, "%d", &idsNum)
+		if idsNum > lastID {
+			lastID = idsNum
+		}
+	}
+
+	newID = lastID + 1
+	return fmt.Sprintf("%02d", newID)
+}*/
 
 func (school School) showStudentInfo(input *bufio.Reader) {
 	fmt.Printf("Student ID to search: ")
@@ -46,7 +62,7 @@ func (school School) showStudentInfo(input *bufio.Reader) {
 	}
 
 	fmt.Printf("Student %s from group %s has an average grade of %.2f.\n",
-		student.name, student.group, avgGrade(student.grades))
+		student.name, student.group, student.avgGrade())
 }
 
 func (school School) genAvgPerGroup(input *bufio.Reader) {
@@ -59,7 +75,7 @@ func (school School) genAvgPerGroup(input *bufio.Reader) {
 	for _, student := range school {
 		if student.group == idg {
 			count++
-			avg += avgGrade(student.grades)
+			avg += student.avgGrade()
 		}
 	}
 	if count == 0 {
@@ -80,17 +96,20 @@ func (school School) genStudentOrderByAvg() {
 	}
 
 	sort.Slice(ids, func(i, j int) bool {
-		return avgGrade(school[ids[i]].grades) > avgGrade(school[ids[j]].grades)
+		return school[ids[i]].avgGrade() > school[ids[j]].avgGrade()
 	})
 
 	fmt.Printf(" Nr.| Grade | Name\n--------------------\n")
 	for i, id := range ids {
 		student := school[id]
-		fmt.Printf("%3d | %5.2f | %s\n", i+1, avgGrade(student.grades), student.name)
+		fmt.Printf("%3d | %5.2f | %s\n", i+1, student.avgGrade(), student.name)
 	}
 }
 
-// func (school School) addStudent() {}
+/*func (school School) addStudent(input *bufio.Reader) {
+	fmt.Printf("\n----[ Add a new student ]----")
+	id := school.generateID()
+}*/
 
 func (school School) showMenu(input *bufio.Reader) {
 	for {
@@ -134,7 +153,7 @@ func (school School) reportsMenu(input *bufio.Reader) {
 	case "2":
 		school.genStudentOrderByAvg()
 	case "no":
-		school.showMenu(input)
+		return
 	default:
 		fmt.Println("Invalid command.")
 	}
