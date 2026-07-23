@@ -27,6 +27,9 @@ func (e ErrGroupNotFound) Error() string {
 }
 
 func (s Student) avgGrade() float64 {
+	if len(s.grades) == 0 {
+		return 0.0
+	}
 	sum := 0.0
 	for _, grade := range s.grades {
 		sum += grade
@@ -34,7 +37,7 @@ func (s Student) avgGrade() float64 {
 	return sum / float64(len(s.grades))
 }
 
-/*func (school School) generateID() string {
+func (school School) generateID() string {
 	var newID, lastID int
 	lastID = 0
 
@@ -48,7 +51,7 @@ func (s Student) avgGrade() float64 {
 
 	newID = lastID + 1
 	return fmt.Sprintf("%02d", newID)
-}*/
+}
 
 func (school School) showStudentInfo(input *bufio.Reader) {
 	fmt.Printf("Student ID to search: ")
@@ -61,8 +64,14 @@ func (school School) showStudentInfo(input *bufio.Reader) {
 		return
 	}
 
-	fmt.Printf("Student %s from group %s has an average grade of %.2f.\n",
+	fmt.Printf("Student %s from group %s has an average grade of %.2f. ",
 		student.name, student.group, student.avgGrade())
+
+	fmt.Print("( Grades: ")
+	for _, grade := range student.grades {
+		fmt.Printf("%.2f ", grade)
+	}
+	fmt.Print(")\n")
 }
 
 func (school School) genAvgPerGroup(input *bufio.Reader) {
@@ -88,7 +97,10 @@ func (school School) genAvgPerGroup(input *bufio.Reader) {
 }
 
 func (school School) genStudentOrderByAvg() {
-	// todo: check if school is empty
+	if len(school) == 0 {
+		fmt.Println("School is empty.")
+		return
+	}
 
 	var ids []string
 	for id := range school {
@@ -106,18 +118,121 @@ func (school School) genStudentOrderByAvg() {
 	}
 }
 
-/*func (school School) addStudent(input *bufio.Reader) {
+func (school School) addStudent(input *bufio.Reader) {
 	fmt.Printf("\n----[ Add a new student ]----")
-	id := school.generateID()
-}*/
+	ids := school.generateID()
+
+	fmt.Printf("\nEnter student name: ")
+	name, _ := input.ReadString('\n')
+	name = strings.TrimSpace(name)
+	if name == "" {
+		fmt.Printf("Error: empty student name")
+		return
+	}
+
+	fmt.Printf("Enter student group: ")
+	group, _ := input.ReadString('\n')
+	group = strings.TrimSpace(group)
+	if group == "" {
+		fmt.Printf("Error: no student group provided\n")
+		return
+	}
+
+	fmt.Printf("Do you want to add grades? (y/n): ")
+	var grades []float64
+	choice, _ := input.ReadString('\n')
+	choice = strings.TrimSpace(choice)
+	switch choice {
+	case "y":
+		{
+			fmt.Printf("\nAdding grades separated by space (type 'stop' to cancel): ")
+			var line string
+			line, _ = input.ReadString('\n')
+			line = strings.TrimSpace(line)
+			if line == "stop" {
+				fmt.Println("Operation cancelled.")
+				return
+			}
+			for _, part := range strings.Fields(line) {
+				var g float64
+				_, err := fmt.Sscanf(part, "%f", &g)
+				if err == nil {
+					grades = append(grades, g)
+				}
+			}
+			school[ids] = &Student{
+				name:   name,
+				group:  group,
+				grades: grades,
+			}
+		}
+	case "n":
+		school[ids] = &Student{
+			name:   name,
+			group:  group,
+			grades: []float64{},
+		}
+	default:
+		fmt.Printf("Error: invalid command\n")
+		return
+	}
+	fmt.Printf("Student %s (ID: %s) added successfully with %d grades!\n", name, ids, len(grades))
+}
+
+func (school School) updateStudent(input *bufio.Reader) {
+	fmt.Printf("\n----[ Update student ]----")
+
+	fmt.Printf("\nStudent ID to search: ")
+	ids, _ := input.ReadString('\n')
+	ids = strings.TrimSpace(ids)
+
+	student, ok := school[ids]
+	if !ok {
+		fmt.Printf("Error %s\n", ErrStudentNotFound(ids))
+		return
+	}
+
+	fmt.Printf("Adding grades separated by space (type 'stop' to cancel): ")
+	var line string
+	line, _ = input.ReadString('\n')
+	line = strings.TrimSpace(line)
+	if line == "stop" {
+		fmt.Println("Operation cancelled.")
+		return
+	}
+	for _, part := range strings.Fields(line) {
+		var g float64
+		_, err := fmt.Sscanf(part, "%f", &g)
+		if err == nil {
+			student.grades = append(student.grades, g)
+		}
+	}
+	fmt.Printf("Student %s with ID %s updated successfully!\n", student.name, ids)
+}
+
+func (school School) deleteStudent(input *bufio.Reader) {
+	fmt.Print("Student ID to delete: ")
+	ids, _ := input.ReadString('\n')
+	ids = strings.TrimSpace(ids)
+
+	student, ok := school[ids]
+	if !ok {
+		fmt.Printf("Error: %s\n", ErrStudentNotFound(ids))
+		return
+	}
+
+	delete(school, ids)
+	fmt.Printf("Student %s with ID %s deleted!\n", student.name, ids)
+}
 
 func (school School) showMenu(input *bufio.Reader) {
 	for {
 		fmt.Println("\n----[ Main menu ]----")
 		fmt.Println("1. View student info")
 		fmt.Println("2. Generate reports")
-		// fmt.Println("3. Add student")
-		// fmt.Println("4. Update student")
+		fmt.Println("3. Add student")
+		fmt.Println("4. Update student")
+		fmt.Println("5. Delete student")
 		fmt.Print("Enter command (type 'no' to cancel): ")
 
 		command, _ := input.ReadString('\n')
@@ -128,8 +243,12 @@ func (school School) showMenu(input *bufio.Reader) {
 			school.showStudentInfo(input)
 		case "2":
 			school.reportsMenu(input)
-		// case "3":
-		// case "4":
+		case "3":
+			school.addStudent(input)
+		case "4":
+			school.updateStudent(input)
+		case "5":
+			school.deleteStudent(input)
 		case "no":
 			return
 		default:
