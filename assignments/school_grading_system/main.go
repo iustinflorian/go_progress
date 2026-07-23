@@ -14,6 +14,8 @@ type Student struct {
 	grades []float64
 }
 
+type School map[string]*Student
+
 type ErrStudentNotFound string
 type ErrGroupNotFound string
 
@@ -32,7 +34,7 @@ func avgGrade(grades []float64) float64 {
 	return sum / float64(len(grades))
 }
 
-func showStudentInfo(school map[string]*Student, input *bufio.Reader) {
+func (school School) showStudentInfo(input *bufio.Reader) {
 	fmt.Printf("Student ID to search: ")
 	ids, _ := input.ReadString('\n')
 	ids = strings.TrimSpace(ids)
@@ -47,7 +49,7 @@ func showStudentInfo(school map[string]*Student, input *bufio.Reader) {
 		student.name, student.group, avgGrade(student.grades))
 }
 
-func genAvgPerGroup(school map[string]*Student, input *bufio.Reader) {
+func (school School) genAvgPerGroup(input *bufio.Reader) {
 	fmt.Printf("Group ID: ")
 	idg, _ := input.ReadString('\n')
 	idg = strings.TrimSpace(idg)
@@ -69,7 +71,7 @@ func genAvgPerGroup(school map[string]*Student, input *bufio.Reader) {
 	fmt.Printf("The average grade for group %s is %.2f\n", idg, avg)
 }
 
-func genStudentOrderByAvg(school map[string]*Student) {
+func (school School) genStudentOrderByAvg() {
 	// todo: check if school is empty
 
 	var ids []string
@@ -88,7 +90,9 @@ func genStudentOrderByAvg(school map[string]*Student) {
 	}
 }
 
-func showMenu(school map[string]*Student, input *bufio.Reader) {
+// func (school School) addStudent() {}
+
+func (school School) showMenu(input *bufio.Reader) {
 	for {
 		fmt.Println("\n----[ Main menu ]----")
 		fmt.Println("1. View student info")
@@ -102,9 +106,9 @@ func showMenu(school map[string]*Student, input *bufio.Reader) {
 
 		switch command {
 		case "1":
-			showStudentInfo(school, input)
+			school.showStudentInfo(input)
 		case "2":
-			reportsMenu(school, input)
+			school.reportsMenu(input)
 		// case "3":
 		// case "4":
 		case "no":
@@ -115,7 +119,7 @@ func showMenu(school map[string]*Student, input *bufio.Reader) {
 	}
 }
 
-func reportsMenu(school map[string]*Student, input *bufio.Reader) {
+func (school School) reportsMenu(input *bufio.Reader) {
 	fmt.Println("\n---------[ Generate a report ]--------")
 	fmt.Println("1. Average grade for a particular group")
 	fmt.Println("2. Students list ordered by average grade")
@@ -126,11 +130,11 @@ func reportsMenu(school map[string]*Student, input *bufio.Reader) {
 
 	switch command {
 	case "1":
-		genAvgPerGroup(school, input)
+		school.genAvgPerGroup(input)
 	case "2":
-		genStudentOrderByAvg(school)
+		school.genStudentOrderByAvg()
 	case "no":
-		showMenu(school, input)
+		school.showMenu(input)
 	default:
 		fmt.Println("Invalid command.")
 	}
@@ -138,11 +142,11 @@ func reportsMenu(school map[string]*Student, input *bufio.Reader) {
 
 func main() {
 	input := bufio.NewReader(os.Stdin)
-	school := map[string]*Student{
+	s := School{
 		"01": &Student{"Andrei", "4b", []float64{9.3, 9.5, 8.4}},
 		"02": &Student{"Matei", "4b", []float64{7.7, 6.3, 7.4}},
 		"03": &Student{"Toni", "4c", []float64{7.4, 9.1, 6.0}},
 	}
 
-	showMenu(school, input)
+	s.showMenu(input)
 }
