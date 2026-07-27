@@ -22,7 +22,7 @@ func assemblePart(wg *sync.WaitGroup, part Part, resultChan chan<- AssemblyResul
 	fmt.Printf("[goroutine] start assembly on %s\n", part.name)
 	time.Sleep(part.duration)
 
-	if rand.Float32() < 0.4 {
+	if rand.Float32() < 0.1 {
 		errorChan <- fmt.Errorf("assembly on %s failed", part.name)
 		return
 	}
@@ -31,14 +31,16 @@ func assemblePart(wg *sync.WaitGroup, part Part, resultChan chan<- AssemblyResul
 		partName: part.name,
 		success:  true,
 	}
+
+	fmt.Printf("[result buffer] %s put result on buffer and finished\n", part.name)
 }
 
 func main() {
 	fmt.Println("[main] start")
 
 	var wg sync.WaitGroup
-	resultChan := make(chan AssemblyResult)
-	errorChan := make(chan error)
+	resultChan := make(chan AssemblyResult, 1)
+	errorChan := make(chan error, 1)
 
 	parts := []Part{
 		{"engine", 3 * time.Second},
@@ -60,11 +62,15 @@ func main() {
 		fmt.Println("[main] done, channel closed")
 	}()
 
+	time.Sleep(3 * time.Second)
+	fmt.Println("[main] reading results from buffer")
+
 	for {
 		select {
 		case res, ok := <-resultChan:
 			if ok {
 				fmt.Printf("[success] assembly on %s finished\n", res.partName)
+				time.Sleep(3 * time.Second)
 			} else {
 				resultChan = nil
 			}
