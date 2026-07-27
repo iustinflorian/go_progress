@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -11,17 +10,28 @@ type Part struct {
 	duration time.Duration
 }
 
-func assembleEngine(wg *sync.WaitGroup, part Part) {
-	defer wg.Done()
+type AssemblyResult struct {
+	partName string
+	success  bool
+}
+
+func assemblePart(part Part, resultChan chan<- AssemblyResult) {
+	//defer wg.Done()
 	fmt.Printf("[goroutine] start assembly on %s\n", part.name)
 	time.Sleep(part.duration)
-	fmt.Printf("[goroutine] %s assembly complete\n", part.name)
+	//fmt.Printf("[goroutine] %s assembly complete\n", part.name)
+
+	resultChan <- AssemblyResult{
+		partName: part.name,
+		success:  true,
+	}
 }
 
 func main() {
 	fmt.Println("[main] start")
 
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
+	resultChan := make(chan AssemblyResult)
 
 	parts := []Part{
 		{"engine", 3 * time.Second},
@@ -30,17 +40,22 @@ func main() {
 	}
 
 	for _, part := range parts {
-		wg.Add(1)
-		go assembleEngine(&wg, part)
+		//wg.Add(1)
+		go assemblePart(part, resultChan)
 	}
 
 	// go assembleEngine("engine", 5*time.Second)
 	// go assembleEngine("suspension", 2*time.Second)
 	// go assembleEngine("wheel", 3*time.Second)
 
-	fmt.Println("[main] still runs")
+	fmt.Println("[main] waiting for channel results")
 
-	wg.Wait()
+	//wg.Wait()
+
+	for i := 0; i < len(parts); i++ {
+		result := <-resultChan
+		fmt.Printf("[channel] %s assembly complete\n", result.partName)
+	}
 
 	fmt.Println("[main] end")
 }
