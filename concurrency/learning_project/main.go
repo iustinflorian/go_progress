@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -15,11 +17,15 @@ type AssemblyResult struct {
 	success  bool
 }
 
-func assemblePart(part Part, resultChan chan<- AssemblyResult) {
-	//defer wg.Done()
+func assemblePart(wg *sync.WaitGroup, part Part, resultChan chan<- AssemblyResult, errorChan chan<- error) {
+	defer wg.Done()
 	fmt.Printf("[goroutine] start assembly on %s\n", part.name)
 	time.Sleep(part.duration)
-	//fmt.Printf("[goroutine] %s assembly complete\n", part.name)
+
+	if rand.Float32() < 0.4 {
+		errorChan <- fmt.Errorf("assembly on %s failed", part.name)
+		return
+	}
 
 	resultChan <- AssemblyResult{
 		partName: part.name,
@@ -30,8 +36,9 @@ func assemblePart(part Part, resultChan chan<- AssemblyResult) {
 func main() {
 	fmt.Println("[main] start")
 
-	//var wg sync.WaitGroup
+	var wg sync.WaitGroup
 	resultChan := make(chan AssemblyResult)
+	errorChan := make(chan error)
 
 	parts := []Part{
 		{"engine", 3 * time.Second},
@@ -40,22 +47,40 @@ func main() {
 	}
 
 	for _, part := range parts {
-		//wg.Add(1)
-		go assemblePart(part, resultChan)
+		wg.Add(1)
+		go assemblePart(&wg, part, resultChan, errorChan)
 	}
-
-	// go assembleEngine("engine", 5*time.Second)
-	// go assembleEngine("suspension", 2*time.Second)
-	// go assembleEngine("wheel", 3*time.Second)
 
 	fmt.Println("[main] waiting for channel results")
 
-	//wg.Wait()
+	go func() {
+		wg.Wait()
+		close(resultChan)
+		close(errorChan)
+		fmt.Println("[main] done, channel closed")
+	}()
 
-	for i := 0; i < len(parts); i++ {
-		result := <-resultChan
-		fmt.Printf("[channel] %s assembly complete\n", result.partName)
+	for {
+		select {
+		case res, ok := <-resultChan:
+			if ok {
+				fmt.Printf("[success] assembly on %s finished\n", res.partName)
+			} else {
+				resultChan = nil
+			}
+		case err, ok := <-errorChan:
+			if ok {
+				fmt.Printf("[error] %s\n", err)
+			} else {
+				errorChan = nil
+			}
+		}
+
+		if resultChan == nil && errorChan == nil {
+			break
+		}
 	}
 
+	fmt.Println("[main] all results and errors processed")
 	fmt.Println("[main] end")
 }
