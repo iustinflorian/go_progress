@@ -1,0 +1,24 @@
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  consumer1:
+    build: .
+    command: ["consumer1"]
+    depends_on:
+      - rabbitmq
+
+  consumer2:
+    build: .
+    command: ["consumer2"]
+    depends_on:
+      - rabbitmq
+
+  producer:
+    build: .
+    command: [ "producer" ]
+    depends_on:
+      - rabbitmq
