@@ -38,7 +38,7 @@ func main() {
 	ch.QueueDeclare("dlq", true, false, false, false, nil)
 	ch.QueueBind("dlq", "dlq_key", "dlx", false, nil)
 
-	// Coada simplă (setată să trimită în DLX dacă un mesaj eșuează)
+	// simple queue to send to dlx if msg fails
 	args := amqp.Table{"x-dead-letter-exchange": "dlx", "x-dead-letter-routing-key": "dlq_key"}
 	ch.QueueDeclare("queue_start", true, false, false, false, args)
 
