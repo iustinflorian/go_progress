@@ -49,7 +49,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		})
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+func postRequestHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		URLs []string `json:"urls"`
 	}
@@ -101,7 +101,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	session := CheckSession{
 		CreatedAt: time.Now(),
 		TotalURLs: len(results),
-		Results: results,
+		Results:   results,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -116,6 +116,35 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
+}
+
+func getSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cursor, err := sessionCollection.Find(ctx, bson.M{})
+	if err != nil {
+		http.Error(w, "Failed to fetch sessions from DB", http.StatusInternalServerError)
+		log.Printf("Error finding sessions: %v", err)
+		return
+	}
+	defer cursor.Close(ctx)
+
+	var sessions []CheckSession
+	if err := cursor.All(ctx, &sessions); err != nil {
+		http.Error(w, "Failed to decode sessions from DB", http.StatusInternalServerError)
+		log.Printf("Error decoding sessions: %v", err)
+		return
+	}
+
+	if sessions == nil {
+		sessions = []CheckSession{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	encoder.Encode(sessions)
 }
 
 func main() {
@@ -135,8 +164,8 @@ func main() {
 
 	sessionCollection = client.Database("web-scraper_db").Collection("sessions")
 
-	wrappedHandler := loggingMiddleware(http.HandlerFunc(handler))
-	http.Handle("POST /check", wrappedHandler)
+	http.Handle("POST /check", loggingMiddleware(http.HandlerFunc(postRequestHandler)))
+	http.Handle("GET /sessions", loggingMiddleware(http.HandlerFunc(getSessionsHandler)))
 
 	log.Println("Listening on port 8080")
 	http.ListenAndServe(":8080", nil)
