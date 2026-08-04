@@ -28,6 +28,11 @@ func postRequestHandler(w http.ResponseWriter, r *http.Request) {
 		URLs []string `json:"urls"`
 	}
 
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
 	json.NewDecoder(r.Body).Decode(&body)
 
 	var results []URLResult
