@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -11,24 +12,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
-
-type CheckSession struct {
-	ID        bson.ObjectID `bson:"_id,omitempty" json:"id"`
-	CreatedAt time.Time     `bson:"created_at" json:"created_at"`
-	TotalURLs int           `bson:"total_urls" json:"total_urls"`
-	Results   []URLResult   `bson:"results" json:"results"`
-}
-
-type URLResult struct {
-	URL        string `json:"url" bson:"url"`
-	StatusCode int    `json:"status_code" bson:"status_code"`
-	Title      string `json:"title,omitempty" bson:"title,omitempty"`
-	Server     string `json:"server,omitempty" bson:"server,omitempty"`
-}
-
-var sessionCollection *mongo.Collection
 
 func getTitle(html string) string {
 	re := regexp.MustCompile("(?i)<title>(.*?)</title>")
@@ -37,16 +21,6 @@ func getTitle(html string) string {
 		return matches[1]
 	}
 	return "Title not found"
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			next.ServeHTTP(w, r)
-			logTime := time.Since(start)
-			log.Printf("[%s] %s (Duration: %s)", r.Method, r.URL, logTime)
-		})
 }
 
 func postRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -147,26 +121,61 @@ func getSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	encoder.Encode(sessions)
 }
 
-func main() {
-	mongoURI := "mongodb://localhost:27017"
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func getSessionByIDHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+
+	objID, err := bson.ObjectIDFromHex(idStr)
+	if err != nil {
+		http.Error(w, "Invalid Session ID format", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
+	var session CheckSession
+	err = sessionCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&session)
 	if err != nil {
-		log.Fatalf("MongoDB connection error: %v", err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			http.Error(w, "Session not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database query error", http.StatusInternalServerError)
+		return
 	}
 
-	if err := client.Ping(ctx, nil); err != nil {
-		log.Fatalf("MongoDB doesn't respond: %v", err)
+	w.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	encoder.Encode(session)
+}
+
+func deleteSessionHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+
+	objID, err := bson.ObjectIDFromHex(idStr)
+	if err != nil {
+		http.Error(w, "Invalid Session ID format", http.StatusBadRequest)
+		return
 	}
-	log.Println("MongoDB connection established")
 
-	sessionCollection = client.Database("web-scraper_db").Collection("sessions")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	http.Handle("POST /check", loggingMiddleware(http.HandlerFunc(postRequestHandler)))
-	http.Handle("GET /sessions", loggingMiddleware(http.HandlerFunc(getSessionsHandler)))
+	res, err := sessionCollection.DeleteOne(ctx, bson.M{"_id": objID})
+	if err != nil {
+		http.Error(w, "Failed to delete session", http.StatusInternalServerError)
+		return
+	}
 
-	log.Println("Listening on port 8080")
-	http.ListenAndServe(":8080", nil)
+	if res.DeletedCount == 0 {
+		http.Error(w, "Session not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Session deleted successfully",
+		"id":      idStr,
+	})
 }
