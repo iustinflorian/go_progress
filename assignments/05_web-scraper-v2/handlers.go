@@ -83,14 +83,16 @@ func postRequestHandler(w http.ResponseWriter, r *http.Request) {
 		Results:   results,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	if sessionCollection != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-	insertResult, err := sessionCollection.InsertOne(ctx, session)
-	if err != nil {
-		log.Fatalf("Error saving to MongoDB: %v", err)
-	} else {
-		log.Printf("Session successfully saved in MongoDB with ID: %v", insertResult.InsertedID)
+		insertResult, err := sessionCollection.InsertOne(ctx, session)
+		if err != nil {
+			log.Printf("Error saving to MongoDB: %v", err)
+		} else {
+			log.Printf("Session saved with ID: %v", insertResult.InsertedID)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

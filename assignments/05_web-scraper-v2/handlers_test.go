@@ -45,6 +45,31 @@ func TestGetTitle(t *testing.T) {
 	}
 }
 
+func TestPostRequestHandler_Success(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<html><head><title>Test Page</title></head></html>"))
+	}))
+	defer mockServer.Close()
+
+	jsonBody := []byte(`{"urls": ["` + mockServer.URL + `"]}`)
+	req, err := http.NewRequest("POST", "/check", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(postRequestHandler)
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("postRequestHandler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
 func TestPostRequestHandler_InvalidJSONStruct(t *testing.T) {
 	invalidJSON := []byte(`{"urls": [invalid-json}`)
 
